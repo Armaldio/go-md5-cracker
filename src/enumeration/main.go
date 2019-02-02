@@ -48,7 +48,7 @@ func combinationForLength(hash [16]byte, generatedString [] byte, maxLength int)
 		// so we can exit
 
 		if md5.Sum(generatedString) == hash {
-			fmt.Printf("Password found: '%s'\n", generatedString)
+			fmt.Println("Password found:", string(generatedString))
 			return true
 		}
 
@@ -82,21 +82,21 @@ func hack(rawHash string, length int) float64 {
 }
 
 func main() {
-	fmt.Printf("Running on %d cores\n\n", runtime.GOMAXPROCS(0))
+	fmt.Println("Running on", runtime.GOMAXPROCS(0), "cores")
 
 	if len(os.Args) == 3 { // there is the correct amount of arguments
 		length, _ := strconv.Atoi(os.Args[2])
 
-		fmt.Printf("Op to completion: %f", math.Pow(43, float64(length)))
+		fmt.Println("Op to completion:", math.Pow(43, float64(length)))
 
 		t := hack(os.Args[1], length) // main function
 
-		fmt.Printf("Done for length = %d in %fs\n", length, t)
+		fmt.Println("Done for length =", length, "in", t, "s")
 
 		input := bufio.NewScanner(os.Stdin)
 		input.Scan()
 	} else {
-		fmt.Printf("Invalid usage: %s hash len", os.Args[0])
+		fmt.Println("Invalid usage:", os.Args[0], "hash len")
 	}
 
 }
