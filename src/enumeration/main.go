@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"sync"
+	"strconv"
 	"time"
 )
 
@@ -17,16 +17,6 @@ import (
 
 /*
 var hashes = [15] string{
-	// found "58047859b0e1218acd754f569baf9e33",
-	// found "94bf87e03cd7dd9f4b826b6f200b98f4",
-	// found "aae81cc29985fe2462ffee9a63371a70",
-	// found "6bc8d7c479ed8ebac94c763766a8f514",
-	// found "99ae3a8efc9bf7fd17bc947706644c91",
-	// found "f2246fbd2e2e3f93c3c50922bd16cbbd",
-	// found "9735f6cc8bce4a82d77ea74b8fe2f994",
-	// found "1efa33adb7f6a92e69a3b6cd3bf532ab",
-	// found "17c58fad14ecb9953c652b6517ee2022",
-	// found "c8af88b1d7a7b3fbe39f3c6de35364ca",
 	"060453b490e5d87744c3703195df2f1a",
 	"21ad598175add22e981d56073e4b0ffd",
 	"6bbb51b3c4c56d20ed3b8a8629dae0a4",
@@ -35,60 +25,29 @@ var hashes = [15] string{
 }
 */
 
-/*var hashes = [15] string{
-	"e2fc714c4727ee9395f324cd2e7f331f", // abcd
-}*/
-
-var hash = "423f92cba4341e7064f9906db9d56469"
 // var hash = "e2fc714c4727ee9395f324cd2e7f331f" // abcd
-var checkSum = bytes.TrimSpace([]byte(hash))
-var hashFound = false
+// var hash = "cd088ce6eab814a28a558ed1906f1053" // !1q*h
 
-var alphabet = [] byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
-// alphabet := [] string{"a", "b", "c"}
-// a
-// b
-// c
-// aa
-// ab
-// ac
-// ba
-// bb
-// bc
-// ca
-// cb
-// cc
-var n = len(alphabet)
-
-func verifyHash(str [] byte) bool {
-	calculatedHash := md5.Sum([]byte(str))
-
-	// 0.75s  / L4
-	// 31.87s / L5
-	dst := [16]byte{}
-	if _, err := hex.Decode(dst[:], checkSum); err != nil {
-		return false // error
-	} else {
-		return calculatedHash == dst
-	}
+func verifyHash(str [] byte, checkSum [16]byte) bool {
+	// 0.60s  / L4
+	// 25.76s / L5
+	return md5.Sum(str) == checkSum
 }
 
-func combinationForLengthRec(generatedString [] byte, maxLength int) {
-
-	// If hash found, exit the recursive
-	if hashFound {
-		return
-	}
+func combinationForLength(hash [16]byte, generatedString [] byte, maxLength int) {
+	var alphabet = [] byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
+	var n = len(alphabet)
 
 	// if maxLength = 0, our generatedString is match our desired length
 	if maxLength == 0 {
+
 		// If the generated string match our current hash, set found to true
 		// so we can exit
 
-		if verifyHash(generatedString) {
-			go fmt.Printf("\n\tPassword found for '%s': '%s'\n\n", hash, generatedString)
-			hashFound = true
+		if verifyHash(generatedString, hash) {
+			// fmt.Printf("Password found: '%s'\n", generatedString)
 		}
+
 		return
 	}
 
@@ -96,43 +55,43 @@ func combinationForLengthRec(generatedString [] byte, maxLength int) {
 	// also decrease length because we added a char
 	for i := 0; i < n; i++ {
 
-		newPrefix := append(generatedString, alphabet[i])
+		generatedString := append(generatedString, alphabet[i])
 
-		combinationForLengthRec(newPrefix, maxLength-1)
+		combinationForLength(hash, generatedString, maxLength-1)
 
 	}
 
 }
 
+func hack(rawHash string, length int) float64 {
+	hash := [16]byte{}
+	if _, err := hex.Decode(hash[:], bytes.TrimSpace([]byte(rawHash))); err != nil {
+		return 0 // error
+	}
+
+	start := time.Now()
+
+	combinationForLength(hash, []byte{}, length)
+
+	elapsed := time.Since(start).Seconds()
+
+	return elapsed
+}
+
 func main() {
 	fmt.Printf("Running on %d cores\n\n", runtime.GOMAXPROCS(0))
 
-	wg := sync.WaitGroup{}
+	if len(os.Args) == 3 { // there is the correct amount of arguments
+		length, _ := strconv.Atoi(os.Args[2])
 
-	globalStart := time.Now()
+		t := hack(os.Args[1], length) // main function
 
-	// max string = 8 chars
-	for i := 1; i <= 8; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
+		fmt.Printf("Done for length = %d in %fs\n", length, t)
 
-			start := time.Now()
-
-			combinationForLengthRec([]byte{}, i)
-
-			elapsed := time.Since(start).Seconds()
-
-			fmt.Printf("Done for length = %d in %fs\n", i, elapsed)
-		}(i)
+		input := bufio.NewScanner(os.Stdin)
+		input.Scan()
+	} else {
+		fmt.Printf("Invalid usage: %s hash len", os.Args[0])
 	}
 
-	wg.Wait()
-
-	globalElapsed := time.Since(globalStart).Seconds()
-
-	fmt.Printf("Total %fs\n", globalElapsed)
-
-	input := bufio.NewScanner(os.Stdin)
-	input.Scan()
 }
