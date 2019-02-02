@@ -2,13 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -52,14 +52,20 @@ func main() {
 		for _, hash := range hashes {
 			// fmt.Printf("Testing hash '%s' with string '%s'\n", hash, str)
 
-			hasher := md5.New()
-			hasher.Write([]byte(str))
-			calculatedHash := hex.EncodeToString(hasher.Sum(nil))
+			calculatedHash := md5.Sum([]byte(str))
+			checkSum := bytes.TrimSpace([]byte(hash))
 
-			// fmt.Printf("Calculated hash: %s\n\n", calculatedHash)
-			if strings.Compare(hash, calculatedHash) == 0 {
-				fmt.Printf("Password found for hash '%s': '%s'\n", hash, str)
+			// 0.93s  / L4
+			// 40.80s / L5
+			dst := [16]byte{}
+			if _, err := hex.Decode(dst[:], checkSum); err != nil {
+
+			} else {
+				if calculatedHash == dst {
+					fmt.Printf("Password found for hash '%s': '%s'\n", hash, str)
+				}
 			}
+
 		}
 	}
 

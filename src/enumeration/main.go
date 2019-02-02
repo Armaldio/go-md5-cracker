@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"runtime"
+	"sync"
 	"time"
 )
 
@@ -40,7 +44,7 @@ var hash = "423f92cba4341e7064f9906db9d56469"
 var checkSum = bytes.TrimSpace([]byte(hash))
 var hashFound = false
 
-var alphabet = [] string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "!", "@", "#", "$", "%", "&", "*"}
+var alphabet = [] byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
 // alphabet := [] string{"a", "b", "c"}
 // a
 // b
@@ -56,77 +60,79 @@ var alphabet = [] string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", 
 // cc
 var n = len(alphabet)
 
-
-func verifyHash(str string) bool {
+func verifyHash(str [] byte) bool {
 	calculatedHash := md5.Sum([]byte(str))
 
-	// 0.93s  / L4
-	// 40.80s / L5
+	// 0.75s  / L4
+	// 31.87s / L5
 	dst := [16]byte{}
 	if _, err := hex.Decode(dst[:], checkSum); err != nil {
-		return false
+		return false // error
 	} else {
 		return calculatedHash == dst
 	}
 }
 
-func combinationsForLength(k int) {
+func combinationForLengthRec(generatedString [] byte, maxLength int) {
+
+	// If hash found, exit the recursive
 	if hashFound {
 		return
 	}
 
-	start := time.Now()
+	// if maxLength = 0, our generatedString is match our desired length
+	if maxLength == 0 {
+		// If the generated string match our current hash, set found to true
+		// so we can exit
 
-	combinationForLengthRec(alphabet, "", k)
-
-	elapsed := time.Since(start).Seconds()
-
-	fmt.Printf("Done for length = %d in %fs\n", k, elapsed)
-}
-
-// The main recursive method
-// to print all possible
-// strings of length k
-func combinationForLengthRec(set [] string, prefix string, k int) {
-	if hashFound {
-		return
-	}
-
-	// Base case: k is 0,
-	// print prefix
-	if k == 0 {
-		if verifyHash(prefix) {
-			fmt.Printf("\n\tPassword found for '%s': '%s'\n\n", hash, prefix)
+		if verifyHash(generatedString) {
+			go fmt.Printf("\n\tPassword found for '%s': '%s'\n\n", hash, generatedString)
 			hashFound = true
 		}
 		return
 	}
 
-	// One by one add all characters
-	// from set and recursively
-	// call for k equals to k-1
+	// Generate a new branch with the current generated string + each letter from the alphabet
+	// also decrease length because we added a char
 	for i := 0; i < n; i++ {
-		// Next character of input added
-		newPrefix := prefix + set[i]
 
-		// k is decreased, because
-		// we have added a new character
-		combinationForLengthRec(set, newPrefix, k-1)
+		newPrefix := append(generatedString, alphabet[i])
+
+		combinationForLengthRec(newPrefix, maxLength-1)
+
 	}
+
 }
 
 func main() {
+	fmt.Printf("Running on %d cores\n\n", runtime.GOMAXPROCS(0))
 
-	// var wg sync.WaitGroup
+	wg := sync.WaitGroup{}
+
+	globalStart := time.Now()
 
 	// max string = 8 chars
-	for i := 1; i <= 3; i++ {
-		// wg.Add(1)
+	for i := 1; i <= 8; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 
-		/*go func(alphabet []string, i int) {*/
-		combinationsForLength(i)
-		// wg.Done()
-		/*}(alphabet, i)*/
+			start := time.Now()
+
+			combinationForLengthRec([]byte{}, i)
+
+			elapsed := time.Since(start).Seconds()
+
+			fmt.Printf("Done for length = %d in %fs\n", i, elapsed)
+		}(i)
 	}
-	/*wg.Wait()*/
+
+	wg.Wait()
+
+	globalElapsed := time.Since(globalStart).Seconds()
+
+	fmt.Printf("Total %fs\n", globalElapsed)
+
+	input := bufio.NewScanner(os.Stdin)
+	input.Scan()
 }
