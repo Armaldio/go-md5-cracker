@@ -37,10 +37,43 @@ func verifyHash(str [] byte, checkSum [16]byte) bool {
 }
 */
 
-func combinationForLength(hash [16]byte, generatedString [] byte, maxLength int) bool {
-	var alphabet = [] byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
-	var n = len(alphabet)
+func combinationForLength(hash [16] byte, maxLength int) []string {
+	var alphabet = []byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
+	if maxLength <= 0 {
+		return nil
+	}
 
+	// Copy alphabet into initial product set -- a set of
+	// one character sets
+	prod := make([]string, len(alphabet))
+	for i, char := range alphabet {
+		prod[i] = string(char)
+	}
+
+	for i := 1; i < maxLength; i++ {
+		// The bigger product should be the size of the alphabet times the size of
+		// the maxLength-1 size product
+		next := make([]string, 0, len(alphabet)*len(prod))
+
+		// Add each char to each word and add it to the new set
+		for _, word := range prod {
+			for _, char := range alphabet {
+				next = append(next, word+string(char))
+				gen := word+string(char)
+				// println(gen)
+				if md5.Sum([]byte(gen)) == hash {
+					fmt.Println("Password found:", gen)
+				}
+			}
+		}
+
+		prod = next
+	}
+
+	return prod
+}
+
+func combinationForLengthRec(alphabet []byte, hash [16]byte, generatedString [] byte, maxLength int) bool {
 	// if maxLength = 0, our generatedString is match our desired length
 	if maxLength == 0 {
 
@@ -58,11 +91,12 @@ func combinationForLength(hash [16]byte, generatedString [] byte, maxLength int)
 	// ----
 	// Generate a new branch with the current generated string + each letter from the alphabet
 	// also decrease length because we added a char
-	for i := 0; i < n; i++ {
-		if combinationForLength(hash, append(generatedString, alphabet[i]), maxLength-1) {
+	for i := range alphabet {
+		if combinationForLengthRec(alphabet, hash, append(generatedString, alphabet[i]), maxLength-1) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -74,7 +108,10 @@ func hack(rawHash string, length int) float64 {
 
 	start := time.Now()
 
-	combinationForLength(hash, []byte{}, length)
+	var alphabet = [] byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
+
+	// combinationForLength(hash, length)
+	combinationForLengthRec(alphabet, hash, []byte{}, length)
 
 	elapsed := time.Since(start).Seconds()
 

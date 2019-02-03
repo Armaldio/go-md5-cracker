@@ -2,30 +2,32 @@ package main
 
 import "testing"
 
+var hash = "060453b490e5d87744c3703195df2f1a" // not found, 8 char long
+
 func BenchmarkHack1(b *testing.B) {
-	// run the Fib function b.N times
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		hack("e2fc714c4727ee9395f324cd2e7f331f", 1)
+		hack(hash, 1)
 	}
 }
 
 func BenchmarkHack2(b *testing.B) {
-	// run the Fib function b.N times
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		hack("e2fc714c4727ee9395f324cd2e7f331f", 2)
+		hack(hash, 2)
 	}
 }
 
 func BenchmarkHack3(b *testing.B) {
-	// run the Fib function b.N times
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		hack("e2fc714c4727ee9395f324cd2e7f331f", 3)
+		hack(hash, 3)
 	}
 }
 
-func BenchmarkHack(b *testing.B) {
-	// run the Fib function b.N times
+func BenchmarkHack4(b *testing.B) {
+	b.ReportAllocs()
 	for n := 0; n < b.N; n++ {
-		hack("e2fc714c4727ee9395f324cd2e7f331f", 4)
+		hack(hash, 4)
 	}
 }
