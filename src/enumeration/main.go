@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -29,75 +27,31 @@ var hashes = [15] string{
 // var hash = "e2fc714c4727ee9395f324cd2e7f331f" // abcd
 // var hash = "cd088ce6eab814a28a558ed1906f1053" // !1q*h
 
-/*
-func verifyHash(str [] byte, checkSum [16]byte) bool {
-	// 0.60s  / L4
-	// 25.76s / L5
-	return md5.Sum(str) == checkSum
-}
-*/
+//   0.22s  / L4
+//   9.84s  / L5
+// 830.21s  / L6
 
-func combinationForLength(hash [16] byte, maxLength int) []string {
-	var alphabet = []byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
-	if maxLength <= 0 {
-		return nil
-	}
-
-	// Copy alphabet into initial product set -- a set of
-	// one character sets
-	prod := make([]string, len(alphabet))
-	for i, char := range alphabet {
-		prod[i] = string(char)
-	}
-
-	for i := 1; i < maxLength; i++ {
-		// The bigger product should be the size of the alphabet times the size of
-		// the maxLength-1 size product
-		next := make([]string, 0, len(alphabet)*len(prod))
-
-		// Add each char to each word and add it to the new set
-		for _, word := range prod {
-			for _, char := range alphabet {
-				next = append(next, word+string(char))
-				gen := word+string(char)
-				// println(gen)
-				if md5.Sum([]byte(gen)) == hash {
-					fmt.Println("Password found:", gen)
-				}
-			}
-		}
-
-		prod = next
-	}
-
-	return prod
-}
-
-func combinationForLengthRec(alphabet []byte, hash [16]byte, generatedString [] byte, maxLength int) bool {
+func combinationForLengthRec(alphabet []byte, hash [16]byte, generatedString [] byte, maxLength int, c chan string) {
 	// if maxLength = 0, our generatedString is match our desired length
 	if maxLength == 0 {
+
+		// fmt.Printf("Testing %s\n", generatedString)
 
 		// If the generated string match our current hash, set found to true
 		// so we can exit
 
 		if md5.Sum(generatedString) == hash {
-			fmt.Println("Password found:", string(generatedString))
-			return true
+			c <- string(generatedString)
 		}
-
-		return false
+		return
 	}
 
 	// ----
 	// Generate a new branch with the current generated string + each letter from the alphabet
 	// also decrease length because we added a char
 	for i := range alphabet {
-		if combinationForLengthRec(alphabet, hash, append(generatedString, alphabet[i]), maxLength-1) {
-			return true
-		}
+		combinationForLengthRec(alphabet, hash, append(generatedString, alphabet[i]), maxLength-1, c)
 	}
-
-	return false
 }
 
 func hack(rawHash string, length int) float64 {
@@ -110,8 +64,18 @@ func hack(rawHash string, length int) float64 {
 
 	var alphabet = [] byte("abcdefghijklmnopqrstuvwxyz0123456789!@#$%&*")
 
-	// combinationForLength(hash, length)
-	combinationForLengthRec(alphabet, hash, []byte{}, length)
+	resultChan := make(chan string)
+
+	for _, char := range alphabet {
+		char := char
+		go func() {
+			combinationForLengthRec(alphabet, hash, []byte{char}, length-1, resultChan)
+		}()
+	}
+
+	val := <-resultChan
+
+	fmt.Printf("Password found: %s\n", val)
 
 	elapsed := time.Since(start).Seconds()
 
@@ -124,14 +88,12 @@ func main() {
 	if len(os.Args) == 3 { // there is the correct amount of arguments
 		length, _ := strconv.Atoi(os.Args[2])
 
-		fmt.Println("Op to completion:", math.Pow(43, float64(length)))
-
 		t := hack(os.Args[1], length) // main function
 
 		fmt.Println("Done for length =", length, "in", t, "s")
 
-		input := bufio.NewScanner(os.Stdin)
-		input.Scan()
+		/*input := bufio.NewScanner(os.Stdin)
+		input.Scan()*/
 	} else {
 		fmt.Println("Invalid usage:", os.Args[0], "hash len")
 	}
