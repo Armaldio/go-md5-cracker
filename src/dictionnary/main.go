@@ -50,13 +50,9 @@ func main() {
 	for scanner.Scan() {
 		str := scanner.Text()
 		for _, hash := range hashes {
-			// fmt.Printf("Testing hash '%s' with string '%s'\n", hash, str)
-
 			calculatedHash := md5.Sum([]byte(str))
 			checkSum := bytes.TrimSpace([]byte(hash))
 
-			// 0.93s  / L4
-			// 40.80s / L5
 			dst := [16]byte{}
 			if _, err := hex.Decode(dst[:], checkSum); err != nil {
 
